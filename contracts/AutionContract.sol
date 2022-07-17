@@ -36,6 +36,8 @@ contract Auction is Ownable {
     uint8 fee = 5; // 5%
 
     event CreateAution(address owner, uint nftId, uint price, uint timeStamp, uint timeEnded);
+    event CreateBid(address owner, uint nftId, uint price , uint timeStamp);
+    event FinishAution(uint nftId, address owner, address winner, uint winnerPrice, uint timestamp);
 
     constructor(ERC20 _token, ERC721 _nft){
         tokenAddres = _token;
@@ -47,9 +49,7 @@ contract Auction is Ownable {
         require(_nftId >= 0,  "Id nft must greater 0");
         require(_price > 0,  "Price must greater 0");
         AutionData memory audata = AutionLists[_nftId];
-        if(audata.isAution == true) {
-            revert("Aution is in active, please cancel aution previous");
-        }
+        if(audata.isAution == true) revert("Aution is in active, please cancel aution previous");
         nftAddress.transferFrom(msg.sender, address(this), _nftId);
         AutionLists[_nftId] = AutionData(msg.sender, _nftId, _price, block.timestamp, block.timestamp + time, true, address(0), 0);
         emit CreateAution(msg.sender, _nftId, _price, block.timestamp, block.timestamp + time);
@@ -72,7 +72,7 @@ contract Auction is Ownable {
         AutionUsers[_nftId].push(_autionUser);
         ValueLastBid[_nftId][msg.sender] = _price - calPrice;
         MyAuctions[msg.sender].push(_autionUser);
-
+        emit CreateBid(msg.sender, _nftId, _price , block.timestamp);
     }
 
     function _caculatorPrice(uint _nftId) private view returns (uint price) {
@@ -91,19 +91,23 @@ contract Auction is Ownable {
         if(audata.isAution == false) revert("Aution is aution");
         address winner = address(0);
         UserAution[] memory bids = AutionUsers[_nftId];
+        uint winnerPrice = 0;
         if(bids.length>0){
             winner = AutionUsers[_nftId][bids.length - 1].owner;
             AutionLists[_nftId].winner = winner;
-            AutionLists[_nftId].winnerPrice = AutionUsers[_nftId][bids.length - 1].price;
-            AutionLists[_nftId].isAution = false;
-        }else{
-            AutionLists[_nftId].isAution = false;
-            AutionLists[_nftId].winnerPrice = 0;
-            }
+            winnerPrice = AutionUsers[_nftId][bids.length - 1].price;
+        }
+        AutionLists[_nftId].isAution = false;
+        AutionLists[_nftId].winnerPrice = winnerPrice;
+        AutionLists[_nftId].timeEnded = 0;
+        AutionLists[_nftId].timeStamp = 0;
+        AutionLists[_nftId].price = 0;
         _caculatorReturnToken(_nftId, winner);
         _claimNft(_nftId);
         // delete history
         delete AutionUsers[_nftId];
+
+        emit FinishAution(_nftId, audata.owner, winner, winnerPrice, block.timestamp);
     }
 
     function _caculatorReturnToken(uint _nftId, address _winner) private {
@@ -121,6 +125,7 @@ contract Auction is Ownable {
         if(audata.winner != address(0) && audata.isAution == false){
             nftAddress.transferFrom(address(this), audata.winner, _nftId);
             AutionLists[_nftId].winner = address(0);
+            AutionLists[_nftId].owner = audata.winner;
             SafeERC20.safeTransfer(tokenAddres, audata.owner, audata.winnerPrice * (100 - fee)/100);
         }
     }
