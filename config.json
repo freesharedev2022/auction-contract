@@ -1,0 +1,11 @@
+{
+  "dev": {
+    "Staking": "0x90466C6892beD855784E28A4647480E0828FD292",
+    "StakingLP": "0x91d8AaBDB031D9297F6dF0b90F0655EaFE6A8c94"
+  },
+  "bsctest": {
+    "Staking": "0x5016181873CA27c45225B4B4f610C4595882717a",
+    "StakingLP": "0x8ccd8f1519238CF477B6D6dec6730e1E524651C1"
+  },
+  "main": {}
+}
